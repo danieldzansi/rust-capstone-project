@@ -36,7 +36,10 @@ fn send(rpc: &Client, addr: &str) -> bitcoincore_rpc::Result<String> {
 /// e.g. http://127.0.0.1:18443/wallet/Miner
 fn wallet_client(wallet_name: &str) -> bitcoincore_rpc::Result<Client> {
     let url = format!("{}/wallet/{}", RPC_URL, wallet_name);
-    Client::new(&url, Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()))
+    Client::new(
+        &url,
+        Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
+    )
 }
 
 /// Creates a wallet if it doesn't exist yet, or loads it if it exists but isn't loaded.
@@ -89,9 +92,8 @@ fn main() -> bitcoincore_rpc::Result<()> {
     // Generate a Miner address labeled "Mining Reward"
 
     let mining_address = miner_rpc.get_new_address(Some("Mining Reward"), None)?;
-    let mining_address = mining_address.assume_checked(); 
+    let mining_address = mining_address.assume_checked();
 
- 
     let mut blocks_mined = 0;
     loop {
         rpc.generate_to_address(1, &mining_address)?;
@@ -127,7 +129,12 @@ fn main() -> bitcoincore_rpc::Result<()> {
     let txid = miner_rpc.send_to_address(
         &trader_address,
         Amount::from_btc(20.0).unwrap(),
-        None, None, None, None, None, None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
     )?;
     println!("Sent 20 BTC to Trader. txid: {}", txid);
 
@@ -143,13 +150,12 @@ fn main() -> bitcoincore_rpc::Result<()> {
     let confirming_block_hashes = rpc.generate_to_address(1, &mining_address)?;
     let confirming_block_hash = confirming_block_hashes[0];
 
-
     // Extract all required transaction details
     // get_transaction (wallet-scoped) gives us decoded details + confirmations.
     let tx_info = miner_rpc.get_transaction(&txid, None)?;
     let block_height = rpc.get_block_info(&confirming_block_hash)?.height;
 
-    let raw_tx = tx_info.transaction()?; 
+    let raw_tx = tx_info.transaction()?;
     let decoded: serde_json::Value = rpc.call(
         "decoderawtransaction",
         &[json!(tx_info.hex.to_lower_hex_string())],
@@ -159,10 +165,8 @@ fn main() -> bitcoincore_rpc::Result<()> {
     let prev_txid = vin0["txid"].as_str().unwrap();
     let prev_vout: u64 = vin0["vout"].as_u64().unwrap();
 
-    let prev_raw: serde_json::Value = rpc.call(
-        "getrawtransaction",
-        &[json!(prev_txid), json!(true)],
-    )?;
+    let prev_raw: serde_json::Value =
+        rpc.call("getrawtransaction", &[json!(prev_txid), json!(true)])?;
     let prev_out = &prev_raw["vout"][prev_vout as usize];
     let miner_input_address = prev_out["scriptPubKey"]["address"]
         .as_str()
@@ -188,10 +192,8 @@ fn main() -> bitcoincore_rpc::Result<()> {
         }
     }
 
-
     let fee = tx_info.fee.unwrap_or(SignedAmount::ZERO).to_btc();
 
- 
     let mut out_file = File::create("../out.txt")?;
     writeln!(out_file, "{}", txid)?;
     writeln!(out_file, "{}", miner_input_address)?;
